@@ -10,6 +10,7 @@ requires-python = ">=3.10,<3.14"
 dependencies = [
     "simvue-connector",
     "h5py (>=3.14.0,<4.0.0)",
+    "rmk-support @ git+https://github.com/ukaea/ReMKiT1D-Python.git",
     ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

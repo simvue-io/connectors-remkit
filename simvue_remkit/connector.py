@@ -12,38 +12,59 @@ import pathlib
 import json
 import multiparser.parsing.file as mp_file_parser
 import typing
-import h5py
-import numpy
 import shutil
-from loguru import logger
+from RMK_support.grid import gridFromDict
+from RMK_support.IO_support import loadFromHDF5
 class RemkitRun(WrappedRun):
     
     def _parse_hfd5(
         self, input_file: str, **__
     ) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
-        with h5py.File(input_file, 'r') as file:
-            return {}, {key: numpy.array(file[key][:]) for key in file.keys()}
-        
-    def _grid_callback(self, data, meta):
-        if data["x"].shape[0] > 1:
-            self._x_grid = data["x"]
-        elif data["v"].shape[0] > 1:
-            self._v_grid = data["v"]
-        else:
-            raise ValueError("Could not find position or velocity grid data")
+        dataset = loadFromHDF5(grid=self.grid, varNames=self.vars_to_track, filepaths=[input_file]).dataset
+        metrics = {"time": dataset["t"].item()}
+        # Loop through each variable
+        for var in list(dataset.data_vars):
+            # Find which coords it is defined over
+            # Only care about dimensions with size > 1
+            var_coords = [coord for coord in dataset[var].coords if len(dataset[coord]) > 1]
+            # We will treat h separately - this is the harmonic number and we want different plots for each
+            if "h" in var_coords:
+                var_coords.remove("h")
+                harmonics = list(dataset["h"].values)
+            else:
+                harmonics = None
+            # If all axes have size 1, plot as a 1D metric
+            if len(var_coords) == 0:
+                if not harmonics:
+                    metrics[var] = dataset[var].item()
+                else:
+                    for harmonic in harmonics:
+                        metrics[f"{var}_harmonic_{harmonic}"] = dataset[var].sel(h=harmonic).item() # will this indexing work   
+            # Otherwise plot as a multi-dimensional metric
+            else:
+                if not harmonics:
+                    if self._first_file:
+                        self.assign_metric_to_grid(
+                            metric_name=var,
+                            axes_ticks=[dataset[coord].values for coord in var_coords],
+                            axes_labels=var_coords
+                        )
+                    metrics[var] = dataset[var].values
+                else:
+                    for harmonic in harmonics:
+                        if self._first_file:
+                            self.assign_metric_to_grid(
+                                metric_name=f"{var}_harmonic_{harmonic}",
+                                axes_ticks=[dataset[coord].values for coord in var_coords],
+                                axes_labels=var_coords
+                        )
+                        metrics[f"{var}_harmonic_{harmonic}"] = dataset[var].sel(h=harmonic).values
+        self._first_file = False
+        return {}, metrics    
     
     def _var_callback(self, data, meta):
         time = data.pop("time", None)
-        x_axis = self._x_grid if self._x_grid is not None else self._v_grid
-        # TODO: should we do a sleep() here if both x and v grid are not available? Maybe grid coords file read slightly after initial var results?
-        label = "position" if self._x_grid is not None else "velocity"
-        # Either provide dict of 2D arrays, or dict of 1D var arrays and a single array of x
-        metrics = {key: numpy.stack((x_axis, value), axis=-1) for key, value in data.items()}
-        # TODO: log metrics as 2D
-        # For now just store in big dict
-        self._all_metrics[self._step] = {"time": time, "data": metrics}
-        
-        self._step += 1
+        self.log_metrics(data, time=time)
         
     def _pre_simulation(self):
         """Upload any preliminary metadata etc and start the simulation process."""
@@ -54,9 +75,15 @@ class RemkitRun(WrappedRun):
         with open(self.config_path, "r") as config_file:
             config_dict = json.load(config_file)
             
-        #TODO: This is a 5000+ line file. Should we only upload certain bits?
-        # Possibly ignore grid points and initial vals of variables?
-        self.update_metadata({"ReMKiT1D": config_dict})
+        self.grid = gridFromDict(config_dict)
+        
+        vars_available = config_dict["HDF5"].get("outputVars", [])
+        if not vars_available:
+            raise ValueError("No variables are set to be output in the confg file!")
+        elif not self.vars_to_track:
+            self.vars_to_track = vars_available
+        elif (vars_unavailable := [var for var in self.vars_to_track if var not in vars_available]):
+            raise ValueError(f"Variable(s) requested not found in config file: {vars_unavailable}")
         
         if self.out_path and config_dict.get("HDF5"):
             config_dict["HDF5"]["filepath"] = str(self.out_path)+"/"
@@ -72,6 +99,10 @@ class RemkitRun(WrappedRun):
 
         if len(list(self.out_path.iterdir())) > 0:
             raise FileExistsError("Results directory is not empty! Please clear this before launching a simulation.")
+        
+        #TODO: This is a 5000+ line file. Should we only upload certain bits?
+        # Possibly ignore grid points and initial vals of variables?
+        self.update_metadata({"ReMKiT1D": config_dict})
             
         if (num_procs_h := config_dict.get("MPI", {}).get("numProcsH")) and (num_procs_x := config_dict.get("MPI", {}).get("numProcsX")):
             num_procs = num_procs_h * num_procs_x
@@ -106,8 +137,8 @@ class RemkitRun(WrappedRun):
         
     def _post_simulation(self):
         """Do any required post-processing, upload output files etc after the simulation has finished."""
-        # for file in self.out_path.iterdir():
-        #     self.save_file(file, category="output")
+        for file in self.out_path.iterdir():
+            self.save_file(file, category="output")
 
         super()._post_simulation()
 
@@ -117,6 +148,7 @@ class RemkitRun(WrappedRun):
         self,
         remkit_executable_path: pydantic.FilePath, # TODO: better solution for this?
         config_path: pydantic.FilePath,
+        vars_to_track: list[str] | None = None,
         results_dir_path: str | None = None, # Will overwrite in config dict
         clean_results_dir: bool = True
         
@@ -137,11 +169,7 @@ class RemkitRun(WrappedRun):
             pathlib.Path(results_dir_path).mkdir(parents=True, exist_ok=True)
             self.out_path =  pathlib.Path(results_dir_path).absolute()
         
-        self._x_grid = None
-        self._v_grid = None
-        self._step = 0
-        
-        # TODO: Wont need this when metric logging available
-        self._all_metrics = {}
+        self.vars_to_track = vars_to_track
+        self._first_file = True
         
         super().launch()
