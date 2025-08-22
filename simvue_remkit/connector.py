@@ -94,8 +94,10 @@ class RemkitRun(WrappedRun):
         else:
             raise ValueError("Output directory path not provided, and not found in config file!")
         if self.clean_results_dir:
-            shutil.rmtree(self.out_path)
-            self.out_path.mkdir()
+            if self.out_path.exists():
+                shutil.rmtree(self.out_path)
+        
+        self.out_path.mkdir(parents=True, exist_ok=True)
 
         if len(list(self.out_path.iterdir())) > 0:
             raise FileExistsError("Results directory is not empty! Please clear this before launching a simulation.")
@@ -115,19 +117,13 @@ class RemkitRun(WrappedRun):
             "-n",
             str(num_procs),
             str(self.remkit_executable_path),
-            cwd=self.config_path.parent,
+            f"-with_config_path={str(self.config_path.absolute())}",
             completion_trigger=self._trigger
         )
 
         
     def _during_simulation(self):
         """Describe which files should be monitored during the simulation by Multiparser."""
-        self.file_monitor.track(
-            path_glob_exprs=str(pathlib.Path(self.out_path).joinpath("ReMKiT1DGridOutput.h5")),
-            parser_func=mp_file_parser.file_parser(self._parse_hfd5),
-            callback=self._grid_callback,
-            static=True
-        )
         self.file_monitor.track(
             path_glob_exprs=str(pathlib.Path(self.out_path).joinpath("ReMKiT1DVarOutput"))+"*.h5",
             parser_func=mp_file_parser.file_parser(self._parse_hfd5),
@@ -149,8 +145,8 @@ class RemkitRun(WrappedRun):
         remkit_executable_path: pydantic.FilePath, # TODO: better solution for this?
         config_path: pydantic.FilePath,
         vars_to_track: list[str] | None = None,
-        results_dir_path: str | None = None, # Will overwrite in config dict
-        clean_results_dir: bool = True
+        results_dir_path: str | None = None,
+        clean_results_dir: bool = False
         
     ):
         """Command to launch the simulation and track it with Simvue.
