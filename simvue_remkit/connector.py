@@ -4,7 +4,7 @@
 This module provides functionality for using Simvue to track and monitor a simulation.
 """
 import pydantic
-
+import time
 import simvue
 from simvue_connector.connector import WrappedRun
 import pydantic
@@ -17,11 +17,41 @@ from RMK_support.grid import gridFromDict
 from RMK_support.IO_support import loadFromHDF5
 class RemkitRun(WrappedRun):
     
+    def _create_grids(self, dataset):
+        for var in list(dataset.data_vars):
+            # Find which coords it is defined over
+            # Only care about dimensions with size > 1
+            var_coords = [coord for coord in dataset[var].coords if len(dataset[coord]) > 1]
+            # We will treat h separately - this is the harmonic number and we want different plots for each
+            if "h" in var_coords:
+                var_coords.remove("h")
+                harmonics = list(dataset["h"].values)
+            else:
+                harmonics = None
+                
+            if len(var_coords) > 0:
+                if harmonics:
+                    for harmonic in harmonics:
+                        self.assign_metric_to_grid(
+                            metric_name=f"{var}_harmonic_{harmonic}",
+                            axes_ticks=[dataset[coord].values for coord in var_coords],
+                            axes_labels=var_coords
+                        )
+                else:
+                    self.assign_metric_to_grid(
+                        metric_name=var,
+                        axes_ticks=[dataset[coord].values for coord in var_coords],
+                        axes_labels=var_coords
+                    )
+        self._grids_created = True
+    
     def _parse_hfd5(
         self, input_file: str, **__
     ) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
         dataset = loadFromHDF5(grid=self.grid, varNames=self.vars_to_track, filepaths=[input_file]).dataset
-        metrics = {"time": dataset["t"].item()}
+        metrics = {"time": dataset["t"].item(), "step": int(input_file.split("_")[-1].split(".")[0])}
+        if metrics["step"] == 0:
+            self._create_grids(dataset)
         # Loop through each variable
         for var in list(dataset.data_vars):
             # Find which coords it is defined over
@@ -35,36 +65,29 @@ class RemkitRun(WrappedRun):
                 harmonics = None
             # If all axes have size 1, plot as a 1D metric
             if len(var_coords) == 0:
-                if not harmonics:
+                if harmonics:
+                    for harmonic in harmonics:
+                        metrics[f"{var}_harmonic_{harmonic}"] = dataset[var].sel(h=harmonic).item() # TODO will this indexing work 
                     metrics[var] = dataset[var].item()
                 else:
-                    for harmonic in harmonics:
-                        metrics[f"{var}_harmonic_{harmonic}"] = dataset[var].sel(h=harmonic).item() # will this indexing work   
+                    metrics[var] = dataset[var].item()
             # Otherwise plot as a multi-dimensional metric
             else:
-                if not harmonics:
-                    if self._first_file:
-                        self.assign_metric_to_grid(
-                            metric_name=var,
-                            axes_ticks=[dataset[coord].values for coord in var_coords],
-                            axes_labels=var_coords
-                        )
-                    metrics[var] = dataset[var].values
-                else:
+                if harmonics:
                     for harmonic in harmonics:
-                        if self._first_file:
-                            self.assign_metric_to_grid(
-                                metric_name=f"{var}_harmonic_{harmonic}",
-                                axes_ticks=[dataset[coord].values for coord in var_coords],
-                                axes_labels=var_coords
-                        )
                         metrics[f"{var}_harmonic_{harmonic}"] = dataset[var].sel(h=harmonic).values
-        self._first_file = False
+                else:
+                    metrics[var] = dataset[var].values
+
         return {}, metrics    
     
     def _var_callback(self, data, meta):
-        time = data.pop("time", None)
-        self.log_metrics(data, time=time)
+        metric_time = data.pop("time", None)
+        metric_step = data.pop("step", None)
+        while not self._grids_created:
+            time.sleep(0.1)
+            
+        self.log_metrics(data, time=metric_time, step=metric_step)
         
     def _pre_simulation(self):
         """Upload any preliminary metadata etc and start the simulation process."""
@@ -166,6 +189,7 @@ class RemkitRun(WrappedRun):
             self.out_path =  pathlib.Path(results_dir_path).absolute()
         
         self.vars_to_track = vars_to_track
-        self._first_file = True
+        self._grids_created = False
+
         
         super().launch()
