@@ -1,7 +1,7 @@
 [project]
-name = "simvue-template"
+name = "simvue-remkit"
 version = "1.0.0a1"
-description = "Template repository for creating Connector classes."
+description = "Connector for viewing results from ReMKiT-1D simulations in Simvue."
 authors = [
     {name = "Matt Field",email = "matthew.field@ukaea.uk"}
 ]
