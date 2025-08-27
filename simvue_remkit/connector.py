@@ -21,6 +21,7 @@ class RemkitRun(WrappedRun):
     def _get_var_coords(self, dataset):
         _var_coords = {}
         for var in list(dataset.data_vars):
+            print(var)
             # Find which coords it is defined over
             # Only care about dimensions with size > 1
             var_coords = [coord for coord in dataset[var].coords if len(dataset[coord]) > 1]
@@ -35,11 +36,11 @@ class RemkitRun(WrappedRun):
                 "harmonics": harmonics
             }
         self._var_coords = _var_coords
+        print(_var_coords)
     
     def _create_grids(self, dataset):
         for var, coords in self._var_coords.items():
-            if not (var_axes := coords.get("axes")):
-                raise ValueError(f"Coordinate axes not defined for {var}")
+            var_axes = coords.get("axes")
             if len(var_axes) > 0:
                 if harmonics := coords.get("harmonics"):
                     for harmonic in harmonics:
@@ -122,8 +123,7 @@ class RemkitRun(WrappedRun):
             self.out_path = pathlib.Path(out_path).absolute()
         else:
             raise ValueError("Output directory path not provided, and not found in config file!")
-        if self.clean_results_dir:
-            if self.out_path.exists():
+        if self.clean_results_dir and self.out_path.exists():
                 shutil.rmtree(self.out_path)
         
         self.out_path.mkdir(parents=True, exist_ok=True)
@@ -210,6 +210,7 @@ class RemkitRun(WrappedRun):
         self._grids_created = False
         self._var_coords = None
         self.vars_to_track = vars_to_track
+        self.out_path =  pathlib.Path(results_dir_path).absolute()
         
         super()._pre_simulation()
         
@@ -224,14 +225,15 @@ class RemkitRun(WrappedRun):
             
         # Otherwise, use the GridOutput file
         else:
-            if not pathlib.Path(results_dir_path).joinpath("ReMKiT1DGridOutput.h5").exists():
+            grid_file = pathlib.Path(results_dir_path).joinpath("ReMKiT1DGridOutput.h5")
+            if not grid_file.exists():
                 raise FileNotFoundError("Cannot determine grid - no config file provided and no GridOutput file found in results dir.")
-            with h5py.File('RMK_advection_test/ReMKiT1DGridOutput.h5', 'r') as grid_output:
+            with h5py.File(grid_file, 'r') as grid_output:
                 self.grid = Grid(
                     xGrid=grid_output.get("x")[()],
-                    vGrid=grid_output.get("x")[()],
+                    vGrid=grid_output.get("v")[()],
                     lMax=int(grid_output.get("l")[-1]),
-                    mMax=int(grid_output.get("l")[-1]),
+                    mMax=int(grid_output.get("m")[-1]),
                 )
                 
         # Now glob through all files in the results dir
