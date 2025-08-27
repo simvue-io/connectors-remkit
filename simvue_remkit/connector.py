@@ -13,7 +13,8 @@ import json
 import multiparser.parsing.file as mp_file_parser
 import typing
 import shutil
-from RMK_support.grid import gridFromDict
+import h5py
+from RMK_support.grid import gridFromDict, Grid
 from RMK_support.IO_support import loadFromHDF5
 class RemkitRun(WrappedRun):
     
@@ -195,6 +196,62 @@ class RemkitRun(WrappedRun):
         
         self.vars_to_track = vars_to_track
         self._grids_created = False
+        self._var_coords = None
 
         
         super().launch()
+        
+    def load(
+        self,
+        results_dir_path: pydantic.DirectoryPath,
+        config_path: pydantic.FilePath | None = None,
+        vars_to_track: list[str] | None = None,
+    ):
+        self._grids_created = False
+        self._var_coords = None
+        self.vars_to_track = vars_to_track
+        
+        super()._pre_simulation()
+        
+        # If config file is provided, get the grid from that
+        if config_path:
+            self.save_file(config_path, category="input")
+            with open(config_path, "r") as config_file:
+                config_dict = json.load(config_file)
+                
+            self.grid = gridFromDict(config_dict)
+            self.update_metadata(config_dict)
+            
+        # Otherwise, use the GridOutput file
+        else:
+            if not pathlib.Path(results_dir_path).joinpath("ReMKiT1DGridOutput.h5").exists():
+                raise FileNotFoundError("Cannot determine grid - no config file provided and no GridOutput file found in results dir.")
+            with h5py.File('RMK_advection_test/ReMKiT1DGridOutput.h5', 'r') as grid_output:
+                self.grid = Grid(
+                    xGrid=grid_output.get("x")[()],
+                    vGrid=grid_output.get("x")[()],
+                    lMax=int(grid_output.get("l")[-1]),
+                    mMax=int(grid_output.get("l")[-1]),
+                )
+                
+        # Now glob through all files in the results dir
+        results_files = list(pathlib.Path(results_dir_path).glob("ReMKiT1DVarOutput_*.h5"))
+        results_files.sort()
+        
+        # Use the first file to get the variables available
+        with h5py.File(results_files[0], 'r') as result_file:
+            vars_available = list(result_file.keys())
+            if not self.vars_to_track:
+                self.vars_to_track = vars_available
+            elif (vars_unavailable := [var for var in self.vars_to_track if var not in vars_available]):
+                raise ValueError(f"Variable(s) requested not found in config file: {vars_unavailable}")
+        
+        for file in results_files:
+            _, metrics = self._parse_hfd5(str(file))
+            self._var_callback(metrics, {})
+            
+        self._post_simulation()
+            
+        
+                
+                       
