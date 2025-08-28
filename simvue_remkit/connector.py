@@ -7,38 +7,50 @@ import pydantic
 import time
 import simvue
 from simvue_connector.connector import WrappedRun
-import pydantic
 import pathlib
 import json
 import multiparser.parsing.file as mp_file_parser
 import typing
 import shutil
 import h5py
+import xarray
 from RMK_support.grid import gridFromDict, Grid
 from RMK_support.IO_support import loadFromHDF5
 class RemkitRun(WrappedRun):
     
-    def _get_var_coords(self, dataset):
+    def _get_var_axes(self, dataset: xarray.Dataset):
+        """Get the axes and harmonics which each variable is defined over.
+
+        Parameters
+        ----------
+        dataset : xarray.Dataset
+            The dataset loaded from a ReMKiT VarOutput file
+        """
         _var_coords = {}
         for var in list(dataset.data_vars):
-            print(var)
             # Find which coords it is defined over
             # Only care about dimensions with size > 1
-            var_coords = [coord for coord in dataset[var].coords if len(dataset[coord]) > 1]
+            var_axes = [axis for axis in dataset[var].coords if len(dataset[axis]) > 1]
             # We will treat h separately - this is the harmonic number and we want different plots for each
-            if "h" in var_coords:
-                var_coords.remove("h")
+            if "h" in var_axes:
+                var_axes.remove("h")
                 harmonics = list(dataset["h"].values)
             else:
                 harmonics = None
             _var_coords[var] = {
-                "axes": var_coords,
+                "axes": var_axes,
                 "harmonics": harmonics
             }
         self._var_coords = _var_coords
-        print(_var_coords)
     
-    def _create_grids(self, dataset):
+    def _create_grids(self, dataset: xarray.Dataset):
+        """Create the Simvue grids requires for plotting multi-dimensional data based on axes of each ReMKiT variable.
+
+        Parameters
+        ----------
+        dataset : xarray.Dataset
+            The dataset loaded from a ReMKiT VarOutput file
+        """
         for var, coords in self._var_coords.items():
             var_axes = coords.get("axes")
             if len(var_axes) > 0:
@@ -60,11 +72,23 @@ class RemkitRun(WrappedRun):
     def _parse_hfd5(
         self, input_file: str, **__
     ) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
+        """Parse a single VarOutput HDF5 file and extract the metrics to be uploaded to Simvue.
+
+        Parameters
+        ----------
+        input_file : str
+            The path to the HDF5 file
+
+        Returns
+        -------
+        tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]
+            The metadata (blank) and metrics data extracted from the file
+        """
         dataset = loadFromHDF5(grid=self.grid, varNames=self.vars_to_track, filepaths=[input_file]).dataset
         metrics = {"time": dataset["t"].item(), "step": int(input_file.split("_")[-1].split(".")[0])}
         
         if not self._var_coords:
-            self._get_var_coords(dataset)
+            self._get_var_axes(dataset)
         if metrics["step"] == 0:
             self._create_grids(dataset)
             
@@ -88,7 +112,16 @@ class RemkitRun(WrappedRun):
 
         return {}, metrics    
     
-    def _var_callback(self, data, meta):
+    def _var_callback(self, data: dict[str, typing.Any], meta: dict[str, typing.Any]):
+        """Upload the metrics to Simvue
+
+        Parameters
+        ----------
+        data : dict[str, typing.Any]
+            The metrics to upload
+        meta : dict[str, typing.Any]
+            The metadata for these metrics
+        """
         metric_time = data.pop("time", None)
         metric_step = data.pop("step", None)
         while not self._grids_created:
@@ -97,7 +130,15 @@ class RemkitRun(WrappedRun):
         self.log_metrics(data, time=metric_time, step=metric_step)
         
     def _pre_simulation(self):
-        """Upload any preliminary metadata etc and start the simulation process."""
+        """Method to run required setup tasks before simulation begins.
+        
+            - Read the config file, load the Grid to use in ReMKiT Python module
+            - Update the results directory path in the config file if passed into launch
+            - Check variables requested by the user are available in the config file
+            - Upload config file as input artifact and metadata
+            - Clean results directory if requested
+            - Launch the simulation with num processors as requested in config file
+        """
         super()._pre_simulation()
         
         self.save_file(self.config_path, category="input")
@@ -152,7 +193,7 @@ class RemkitRun(WrappedRun):
 
         
     def _during_simulation(self):
-        """Describe which files should be monitored during the simulation by Multiparser."""
+        """Monitor the VarOutput files as they are created and extract metrics from them."""
         self.file_monitor.track(
             path_glob_exprs=str(pathlib.Path(self.out_path).joinpath("ReMKiT1DVarOutput"))+"*.h5",
             parser_func=mp_file_parser.file_parser(self._parse_hfd5),
@@ -161,7 +202,7 @@ class RemkitRun(WrappedRun):
         )
         
     def _post_simulation(self):
-        """Do any required post-processing, upload output files etc after the simulation has finished."""
+        """Save all output files as output artifacts."""
         for file in self.out_path.iterdir():
             self.save_file(file, category="output")
 
@@ -178,12 +219,33 @@ class RemkitRun(WrappedRun):
         clean_results_dir: bool = False
         
     ):
-        """Command to launch the simulation and track it with Simvue.
+        """Launch a ReMKiT-1D simulation and track it with Simvue.
+
+        Parameters
+        ----------
+        remkit_executable_path : pydantic.FilePath
+            The path to the ReMKiT executable used to run the simulation
+        config_path: pydantic.FilePath
+            Path to the config file to use for this simulation
+        vars_to_track : list[str] | None, optional
+            The variables from your simulation to track using Simvue, by default None (will track all available variables)
+        results_dir_path : str | None, optional
+            The directory to store your results in (this will update the path in your config file)
+            by default None, which uses the results directory path stored in your config file
+        clean_results_dir : bool, optional
+            Whether to delete all existing files in the results directory before starting the simulation, by default False
+
+        Raises
+        ------
+        FileNotFoundError
+            Raised if ReMKiT executable could not be found
+        FileNotFoundError
+            Raised if config file could not be found
         """
         if not pathlib.Path(remkit_executable_path).exists():
-            raise ValueError("Could not find ReMKiT executable")
+            raise FileNotFoundError("Could not find ReMKiT executable")
         if not pathlib.Path(config_path).exists():
-            raise ValueError("Could not find config file")
+            raise FileNotFoundError("Could not find config file")
         
         self.out_path = None
         self.remkit_executable_path = remkit_executable_path
