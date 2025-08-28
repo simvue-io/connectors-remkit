@@ -269,6 +269,35 @@ class RemkitRun(WrappedRun):
         config_path: pydantic.FilePath | None = None,
         vars_to_track: list[str] | None = None,
     ):
+        """Load results from a pre-existing set of ReMKiT results into Simvue.
+
+        Parameters
+        ----------
+        results_dir_path : pydantic.DirectoryPath
+            The path to the directory where results are stored
+        config_path : pydantic.FilePath | None, optional
+            The configuration file which was used by this simulation (if available), by default None
+        vars_to_track : list[str] | None, optional
+            The variables from your simulation to track using Simvue, by default None (will track all available variables)
+
+        Raises
+        ------
+        FileNotFoundError
+            Raised if results directory could not be found
+        FileNotFoundError
+            Raised if config file path is provided, and no file could be found
+        FileNotFoundError
+            Raised if no config file was provided, and no GridOutput file is present in the results directory to determine a grid from
+        ValueError
+            Raised if variables requested by user are not available in the results files
+
+        """
+        
+        if not pathlib.Path(results_dir_path).exists():
+            raise FileNotFoundError("Could not find results directory!")
+        if config_path and not pathlib.Path(config_path).exists():
+            raise FileNotFoundError("Could not find config file")
+        
         self._grids_created = False
         self._var_coords = None
         self.vars_to_track = vars_to_track
