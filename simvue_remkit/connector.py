@@ -106,9 +106,9 @@ class RemkitRun(WrappedRun):
             else:
                 if harmonics := coords.get("harmonics"):
                     for harmonic in harmonics:
-                        metrics[f"{var}_harmonic_{harmonic}"] = dataset[var].sel(h=harmonic).values
+                        metrics[f"{var}_harmonic_{harmonic}"] = dataset[var].sel(h=harmonic).values.T
                 else:
-                    metrics[var] = dataset[var].values
+                    metrics[var] = dataset[var].values.T
 
         return {}, metrics    
     
