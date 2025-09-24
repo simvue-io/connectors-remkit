@@ -17,6 +17,12 @@ import xarray
 from RMK_support.grid import gridFromDict, Grid
 from RMK_support.IO_support import loadFromHDF5
 class RemkitRun(WrappedRun):
+
+    def _is_on_dual_grid(self, config: dict, var: str):
+        derived = config.get("variables", {}).get("derivedVariables", {}).get(var, {})
+        implicit = config.get("variables", {}).get("implicitVariables", {}).get(var, {})
+        return derived.get("isOnDualGrid", False) or implicit.get("isOnDualGrid", False)
+
     
     def _get_var_axes(self, dataset: xarray.Dataset):
         """Get the axes and harmonics which each variable is defined over.
@@ -37,6 +43,11 @@ class RemkitRun(WrappedRun):
                 harmonics = list(dataset["h"].values)
             else:
                 harmonics = None
+            # Correct for dual axes
+            if var in self.dual_vars:
+                var_axes.remove("x")
+                var_axes.append("x_dual")
+                
             _var_coords[var] = {
                 "axes": var_axes,
                 "harmonics": harmonics
@@ -85,6 +96,7 @@ class RemkitRun(WrappedRun):
             The metadata (blank) and metrics data extracted from the file
         """
         dataset = loadFromHDF5(grid=self.grid, varNames=self.vars_to_track, filepaths=[input_file]).dataset
+        print(dataset)
         metrics = {"time": dataset["t"].item(), "step": int(input_file.split("_")[-1].split(".")[0])}
         
         if not self._var_coords:
@@ -155,6 +167,8 @@ class RemkitRun(WrappedRun):
             self.vars_to_track = vars_available
         elif (vars_unavailable := [var for var in self.vars_to_track if var not in vars_available]):
             raise ValueError(f"Variable(s) requested not found in config file: {vars_unavailable}")
+        
+        self.dual_vars = [var for var in self.vars_to_track if self._is_on_dual_grid(config_dict, var)]
         
         if self.out_path and config_dict.get("HDF5"):
             config_dict["HDF5"]["filepath"] = str(self.out_path)+"/"
