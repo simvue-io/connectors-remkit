@@ -1,16 +1,9 @@
 from simvue_remkit.connector import RemkitRun
-import simvue
-import threading
-import time
-import tempfile
-from unittest.mock import patch
-import uuid
 import pathlib
-import pytest
 import json
 
 from RMK_support.IO_support import loadFromHDF5
-from RMK_support.grid import gridFromDict, Grid
+from RMK_support.grid import gridFromDict
 
 
 def test_get_var_axes_2d():
