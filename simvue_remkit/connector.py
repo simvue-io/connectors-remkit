@@ -80,7 +80,7 @@ class RemkitRun(WrappedRun):
                     )
         self._grids_created = True
     
-    def _parse_hfd5(
+    def _parse_hdf5(
         self, input_file: str, **__
     ) -> tuple[dict[str, typing.Any], list[dict[str, typing.Any]]]:
         """Parse a single VarOutput HDF5 file and extract the metrics to be uploaded to Simvue.
@@ -96,7 +96,8 @@ class RemkitRun(WrappedRun):
             The metadata (blank) and metrics data extracted from the file
         """
         dataset = loadFromHDF5(grid=self.grid, varNames=self.vars_to_track, filepaths=[input_file]).dataset
-        metrics = {"time": dataset["t"].item(), "step": int(input_file.split("_")[-1].split(".")[0])}
+        print(dataset)
+        metrics = {"step": int(input_file.split("_")[-1].split(".")[0])}
         
         if not self._var_coords:
             self._get_var_axes(dataset)
@@ -209,7 +210,7 @@ class RemkitRun(WrappedRun):
         """Monitor the VarOutput files as they are created and extract metrics from them."""
         self.file_monitor.track(
             path_glob_exprs=str(pathlib.Path(self.out_path).joinpath("ReMKiT1DVarOutput"))+"*.h5",
-            parser_func=mp_file_parser.file_parser(self._parse_hfd5),
+            parser_func=mp_file_parser.file_parser(self._parse_hdf5),
             callback=self._var_callback,
             static=True
         )
@@ -353,7 +354,7 @@ class RemkitRun(WrappedRun):
                 raise ValueError(f"Variable(s) requested not found in config file: {vars_unavailable}")
         
         for file in results_files:
-            _, metrics = self._parse_hfd5(str(file))
+            _, metrics = self._parse_hdf5(str(file))
             self._var_callback(metrics, {})
             
         self._post_simulation()
