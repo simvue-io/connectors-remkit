@@ -14,7 +14,7 @@ def setup_config_file():
         config = {
             "HDF5": {
                 "outputVars": ["var_1", "var_2"],
-                "filepath": f"{tempdir}/outputs"
+                "filepath": f"{tempdir}/outputs/"
             },
             "MPI": {
                 "numProcsH": 2,
@@ -73,4 +73,63 @@ def test_pre_simulation_vars(folder_setup, setup_config_file, vars_to_track):
         assert run.metadata.get("ReMKiT1D") == config
         
 
-    
+@pytest.mark.parametrize(
+    "set_results_path", [
+        True,
+        False
+    ],
+) 
+@pytest.mark.parametrize(
+    "results_path_full", [
+        True,
+        False
+    ],
+)   
+@pytest.mark.parametrize(
+    "set_clean_results_dir", [
+        True,
+        False
+    ],
+)
+@patch.object(RemkitRun, "add_process", mock_add_process)
+@patch("simvue_remkit.connector.gridFromDict", new=mock_grid_from_dict)
+def test_pre_simulation_results_path(folder_setup, setup_config_file, set_results_path, results_path_full, set_clean_results_dir):
+    config_path, config = setup_config_file
+    with RemkitRun() as run:
+        run.config_path = config_path
+        run.vars_to_track = None
+        if set_results_path:
+            results_path = pathlib.Path(config_path.parent.joinpath("new_results"))
+            results_path.mkdir()
+            run.out_path = results_path.absolute()
+            if results_path_full:
+                results_path.joinpath("test.txt").touch()
+        else:
+            run.out_path = None
+            if results_path_full:
+                pathlib.Path(config["HDF5"]["filepath"]).mkdir()
+                pathlib.Path(config["HDF5"]["filepath"]).joinpath("test.txt").touch()
+        run.clean_results_dir = set_clean_results_dir
+        run.remkit_executable_path = "remkit"
+        run.init("test_pre_simulation", folder=folder_setup)
+                
+        if not set_clean_results_dir and results_path_full:
+            with pytest.raises(FileExistsError):
+                run._pre_simulation()
+            return
+        else:
+            run._pre_simulation()
+        
+        assert run.out_path
+        assert len(list(run.out_path.iterdir())) == 0
+        
+        with open(config_path, "r") as config_file:
+            new_config = json.load(config_file)
+            assert new_config["HDF5"]["filepath"] == str(run.out_path)+"/"
+            
+        assert run.process_command == f"ReMKiT_Process mpirun -n 4 remkit -with_config_path={config_path}"       
+        
+        client = simvue.Client()
+        run = client.get_run(run.id)
+        assert run.artifacts[0]["name"] == "config.json"
+        assert run.metadata.get("ReMKiT1D") == new_config
