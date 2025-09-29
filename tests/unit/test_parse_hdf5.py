@@ -11,14 +11,14 @@ def mock_create_grids(self, dataset):
 
 @patch.object(RemkitRun, "_create_grids", mock_create_grids)
 def test_parse_hdf5_2D():
-    with open(pathlib.Path(__file__).parent.joinpath("example_data", "RMK_advection_test", "config.json"), "r") as config_file:
+    with open(pathlib.Path(__file__).parents[1].joinpath("example_data", "RMK_advection_test", "config.json"), "r") as config_file:
         config = json.load(config_file)
     with RemkitRun() as run:
         run.grid = gridFromDict(config)
         run.dual_vars = ["n_dual", "G_dual"]
         run.vars_to_track = ["time", "n", "n_dual", "G", "G_dual"]
         run._var_coords = None
-        meta, metrics = run._parse_hdf5(str(pathlib.Path(__file__).parent.joinpath("example_data", "RMK_advection_test", "ReMKiT1DVarOutput_0.h5")))
+        meta, metrics = run._parse_hdf5(str(pathlib.Path(__file__).parents[1].joinpath("example_data", "RMK_advection_test", "ReMKiT1DVarOutput_0.h5")))
         
     # Check 1D metric time is a float, not a list of one value
     assert isinstance(metrics.get("time"), float)
@@ -33,14 +33,14 @@ def test_parse_hdf5_2D():
 
 @patch.object(RemkitRun, "_create_grids", mock_create_grids)
 def test_parse_hdf5_3D_harmonics():
-    with open(pathlib.Path(__file__).parent.joinpath("example_data", "RMK_kin_adv_test", "config.json"), "r") as config_file:
+    with open(pathlib.Path(__file__).parents[1].joinpath("example_data", "RMK_kin_adv_test", "config.json"), "r") as config_file:
         config = json.load(config_file)
     with RemkitRun() as run:
         run.grid = gridFromDict(config)
         run.vars_to_track = ["time", "f"]
         run.dual_vars = []
         run._var_coords = None
-        meta, metrics = run._parse_hdf5(str(pathlib.Path(__file__).parent.joinpath("example_data", "RMK_kin_adv_test", "ReMKiT1DVarOutput_0.h5")))
+        meta, metrics = run._parse_hdf5(str(pathlib.Path(__file__).parents[1].joinpath("example_data", "RMK_kin_adv_test", "ReMKiT1DVarOutput_0.h5")))
         
     # Check 1D metric time is a float, not a list of one value
     assert isinstance(metrics.get("time"), float)

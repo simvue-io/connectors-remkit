@@ -391,7 +391,7 @@
         "initValFilename": null,
         "loadInitValsFromHDF5": false,
         "mode": "fixedNumSteps",
-        "numTimesteps": 4000,
+        "numTimesteps": 400,
         "outputPoints": [],
         "restart": {
             "frequency": 1000,

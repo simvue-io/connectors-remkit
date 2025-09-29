@@ -7,11 +7,11 @@ from RMK_support.grid import gridFromDict
 
 
 def test_get_var_axes_2d():
-    with open(pathlib.Path(__file__).parent.joinpath("example_data", "RMK_advection_test", "config.json"), "r") as config_file:
+    with open(pathlib.Path(__file__).parents[1].joinpath("example_data", "RMK_advection_test", "config.json"), "r") as config_file:
         config = json.load(config_file)
     var_list = ["time", "n", "n_dual", "G", "G_dual"]
     grid = gridFromDict(config)
-    data = loadFromHDF5(grid, var_list, [str(pathlib.Path(__file__).parent.joinpath("example_data", "RMK_advection_test","ReMKiT1DVarOutput_0.h5"))])
+    data = loadFromHDF5(grid, var_list, [str(pathlib.Path(__file__).parents[1].joinpath("example_data", "RMK_advection_test","ReMKiT1DVarOutput_0.h5"))])
     with RemkitRun() as run:
         run.dual_vars = ["n_dual", "G_dual"]
         run._get_var_axes(data.dataset)
@@ -32,11 +32,11 @@ def test_get_var_axes_2d():
         assert run._var_coords[var]["harmonics"] is None
 
 def test_get_var_axes_3d():
-    with open(pathlib.Path(__file__).parent.joinpath("example_data", "RMK_kin_adv_test", "config.json"), "r") as config_file:
+    with open(pathlib.Path(__file__).parents[1].joinpath("example_data", "RMK_kin_adv_test", "config.json"), "r") as config_file:
         config = json.load(config_file)
     var_list = ["time", "f"]
     grid = gridFromDict(config)
-    data = loadFromHDF5(grid, var_list, [str(pathlib.Path(__file__).parent.joinpath("example_data", "RMK_kin_adv_test","ReMKiT1DVarOutput_0.h5"))])
+    data = loadFromHDF5(grid, var_list, [str(pathlib.Path(__file__).parents[1].joinpath("example_data", "RMK_kin_adv_test","ReMKiT1DVarOutput_0.h5"))])
     with RemkitRun() as run:
         run.dual_vars = []
         run._get_var_axes(data.dataset)

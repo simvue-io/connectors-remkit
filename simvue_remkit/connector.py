@@ -96,7 +96,6 @@ class RemkitRun(WrappedRun):
             The metadata (blank) and metrics data extracted from the file
         """
         dataset = loadFromHDF5(grid=self.grid, varNames=self.vars_to_track, filepaths=[input_file]).dataset
-        print(dataset)
         metrics = {"step": int(input_file.split("_")[-1].split(".")[0])}
         
         if not self._var_coords:
@@ -326,7 +325,7 @@ class RemkitRun(WrappedRun):
                 config_dict = json.load(config_file)
                 
             self.grid = gridFromDict(config_dict)
-            self.update_metadata(config_dict)
+            self.update_metadata({"ReMKiT1D": config_dict})
             
         # Otherwise, use the GridOutput file
         else:
@@ -352,6 +351,11 @@ class RemkitRun(WrappedRun):
                 self.vars_to_track = vars_available
             elif (vars_unavailable := [var for var in self.vars_to_track if var not in vars_available]):
                 raise ValueError(f"Variable(s) requested not found in config file: {vars_unavailable}")
+        if config_path:
+            self.dual_vars = [var for var in self.vars_to_track if self._is_on_dual_grid(config_dict, var)]
+        else:
+            print("Warning: No config file has been provided - variables defined on a dual grid could not be identified!")
+            self.dual_vars = []
         
         for file in results_files:
             _, metrics = self._parse_hdf5(str(file))
