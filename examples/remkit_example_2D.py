@@ -44,9 +44,8 @@ with RemkitRun() as run:
     # Then call the .launch() method to start your ReMKiT simulation, providing the path to the config file
     run.launch(
         remkit_executable_path = "/home/ReMKiT1D/build/src/executables/ReMKiT1D/ReMKiT1D",
-        config_path = pathlib.Path(__file__).parents[1].joinpath("tests", "example_data", "RMK_advection_test", "config.json"),
-        # You can optionally use the connector to define where to store results, and which variables to track
-        results_dir_path = str(pathlib.Path(__file__).parent.joinpath("2D_example_results")),
+        config_path = pathlib.Path(__file__).parent.joinpath("config_2D.json"),
+        # You can optionally use the connector to define where to store results, whether to delete previous results, and which variables to track
         clean_results_dir = True
     )
     

@@ -6,13 +6,18 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test
 RUN add-apt-repository ppa:deadsnakes/ppa
 
-# Update and Installs Required Packages for Simvue and other Packages
+# Update and Install Required Packages for Simvue and other Packages
 RUN apt update \
         && apt install -y \
         python3.11 python3.11-venv python3.11-dev \
         pip
 
+RUN apt install -y vim nano
+
 RUN ln -s /usr/bin/python3.11 /usr/bin/python
+
+RUN python3.11 -m ensurepip --upgrade \
+    && python3.11 -m pip install --upgrade pip setuptools wheel
 
 WORKDIR /home
 
@@ -39,13 +44,11 @@ RUN make test > /home/ReMKiT1D_build_test.out
 
 WORKDIR /home
 
-RUN pip install ipywidgets ipykernel jupyter_bokeh pytest
-
 RUN git clone https://github.com/simvue-io/connectors-remkit
 
 WORKDIR /home/connectors-remkit/
 
-RUN pip install .
+RUN python3.11 -m pip install .
 
 WORKDIR /home/connectors-remkit/examples
 
