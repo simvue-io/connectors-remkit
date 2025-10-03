@@ -4,20 +4,15 @@ FROM smijin/remkit1d-ci:latest
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test
-RUN add-apt-repository ppa:deadsnakes/ppa
 
-# Update and Install Required Packages for Simvue and other Packages
+# # Update and Install Required Packages for Simvue and other Packages
 RUN apt update \
         && apt install -y \
-        python3.11 python3.11-venv python3.11-dev \
-        pip
+        pip vim nano
 
-RUN apt install -y vim nano
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-RUN ln -s /usr/bin/python3.11 /usr/bin/python
-
-RUN python3.11 -m ensurepip --upgrade \
-    && python3.11 -m pip install --upgrade pip setuptools wheel
+RUN pip install uv
 
 WORKDIR /home
 
@@ -42,13 +37,13 @@ WORKDIR /home/ReMKiT1D/build
 
 RUN make test > /home/ReMKiT1D_build_test.out
 
-WORKDIR /home
-
-RUN git clone https://github.com/simvue-io/connectors-remkit
-
 WORKDIR /home/connectors-remkit/
+COPY . .
 
-RUN python3.11 -m pip install .
+RUN uv venv --python 3.11
+RUN uv pip install .
 
+ENV VIRTUAL_ENV=/home/connectors-remkit/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 WORKDIR /home/connectors-remkit/examples
 
