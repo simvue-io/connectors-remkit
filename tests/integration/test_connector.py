@@ -71,7 +71,8 @@ def test_remkit_connector(folder_setup, offline, offline_cache_setup, launch, se
         config_dict = json.load(config_file)
         
     if launch or set_config_path:
-        assert [artifact["name"] for artifact in retrieved_run.artifacts if artifact["category"] == "input"][0] == "config.json" # TODO
+        assert [artifact["name"] for artifact in retrieved_run.artifacts if artifact["category"] == "input"][0] == "config.json"
+        # Won't check the whole dict since Remkit sometimes overwrites and adds blank keys
         assert retrieved_run.metadata.get("ReMKiT1D")["HDF5"] == config_dict["HDF5"]
         
     # Check all results uploaded

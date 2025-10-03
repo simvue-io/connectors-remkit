@@ -216,8 +216,8 @@ class RemkitRun(WrappedRun):
         
     def _post_simulation(self):
         """Save all output files as output artifacts."""
-        for file in self.out_path.iterdir():
-            self.save_file(file, category="output")
+        #for file in self.out_path.iterdir():
+            #self.save_file(file, category="output")
 
         super()._post_simulation()
 
