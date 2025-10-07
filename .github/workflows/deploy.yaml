@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: test_pypi
-      url: https://test.pypi.org/p/your-module-name
+      url: https://test.pypi.org/p/simvue-remkit
     permissions:
       id-token: write
     steps:
@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/your-module-name
+      url: https://pypi.org/p/simvue-remkit
     permissions:
       id-token: write
     steps:
@@ -105,7 +105,7 @@ jobs:
           gh release create
           '${{ github.ref_name }}'
           --notes "$LATESTCHANGES"
-          --title 'Your-Module-Name ${{ github.ref_name }}'
+          --title 'Simvue ReMKiT ${{ github.ref_name }}'
           --repo '${{ github.repository }}'
       - name: Upload artifact signatures to GitHub Release
         env:
