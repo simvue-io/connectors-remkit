@@ -8,7 +8,7 @@ The ReMKiT-1D simulation here simulates.....
 To run this example with Docker:
     - Pull the base FDS image: docker run -it ghcr.io/simvue-io/remkit_example
     - Create a simvue.toml file, copying in your information from the Simvue server: nano simvue.toml
-    - Run the example script: python remkit_example_2D.py
+    - Run the example script: python examples/remkit_example_2D.py
 
 To run this example on your own system with ReMKiT installed:
     - Ensure that you have ReMKiT-1D installed - see here for instructions: https://github.com/ukaea/ReMKiT1D
@@ -24,7 +24,6 @@ For a more in depth example, see: https://docs.simvue.io/examples/remkit/
 """
 
 import pathlib
-import shutil
 import uuid
 from simvue_remkit.connector import RemkitRun
 

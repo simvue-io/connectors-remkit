@@ -1,6 +1,6 @@
 {
   "HDF5": {
-    "filepath": "./2D_example_results/",
+    "filepath": "./examples/2D_example_results/",
     "inputVars": [],
     "outputVars": [
       "time",
