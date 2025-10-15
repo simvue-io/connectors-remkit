@@ -59,7 +59,7 @@ def test_remkit_connector(folder_setup, offline, offline_cache_setup, launch, se
     run_id = run.id
     
     if offline:
-        _id_mapping = sender()
+        _id_mapping = sender(throw_exceptions=True)
         run_id = _id_mapping.get(run_id)
         time.sleep(1)
     
