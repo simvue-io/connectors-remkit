@@ -24,7 +24,6 @@ For a more in depth example, see: https://docs.simvue.io/examples/remkit/
 """
 
 import pathlib
-import shutil
 import uuid
 from simvue_remkit.connector import RemkitRun
 
