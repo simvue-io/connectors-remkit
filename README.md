@@ -32,9 +32,9 @@ A customised `RemkitRun` class has been created which automatically does the fol
 * Uploads information from the config file as metadata
 * Tracks the ReMKiT simulation itself, alerting the user via the web UI if the simulation crashes unexpectedly
 * Tracks the outputs from the simulation as they are created, uploading them as 1D, 2D or 3D metrics
-* Uploads all results as Output artifacts
+* Uploads all results as output artifacts
 
-The `RemkitRun` class also inherits from the `Run()` class of the Simvue Python API, allowing for further detailed control over how your simulation is tracked.
+The `RemkitRun` class also inherits from the `Run` class of the Simvue Python API, allowing for further detailed control over how your simulation is tracked.
 
 
 ## Installation
@@ -52,12 +52,12 @@ pip install simvue-remkit
 ```
 
 ## Configuration
-The service URL and token can be defined as environment variables:
+The server URL and token can be defined as environment variables:
 ```sh
 export SIMVUE_URL=...
 export SIMVUE_TOKEN=...
 ```
-or a file `simvue.toml` can be created containing:
+or a `simvue.toml` file can be created containing:
 ```toml
 [server]
 url = "..."
@@ -96,6 +96,7 @@ if __name__ == "__main__":
         )
 
         # Can use the base Simvue Run() methods to upload extra information, eg:
+        import os
         run.save_file(os.path.abspath(__file__), "code")
 
         # Launch the ReMKiT simulation
