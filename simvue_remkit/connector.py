@@ -227,9 +227,9 @@ class RemkitRun(WrappedRun):
         self,
         remkit_executable_path: pydantic.FilePath, # TODO: better solution for this?
         config_path: pydantic.FilePath,
-        vars_to_track: list[str] | None = None,
         results_dir_path: str | None = None,
-        clean_results_dir: bool = False
+        clean_results_dir: bool = False,
+        vars_to_track: list[str] | None = None,
         
     ):
         """Launch a ReMKiT-1D simulation and track it with Simvue.
@@ -240,20 +240,18 @@ class RemkitRun(WrappedRun):
             The path to the ReMKiT executable used to run the simulation
         config_path: pydantic.FilePath
             Path to the config file to use for this simulation
-        vars_to_track : list[str] | None, optional
-            The variables from your simulation to track using Simvue, by default None (will track all available variables)
         results_dir_path : str | None, optional
             The directory to store your results in (this will update the path in your config file)
             by default None, which uses the results directory path stored in your config file
         clean_results_dir : bool, optional
             Whether to delete all existing files in the results directory before starting the simulation, by default False
-
+        vars_to_track : list[str] | None, optional
+            The variables from your simulation to track using Simvue, by default None (will track all available variables)
         Raises
         ------
         FileNotFoundError
-            Raised if ReMKiT executable could not be found
-        FileNotFoundError
-            Raised if config file could not be found
+            If ReMKiT executable could not be found
+            If config file could not be found
         """
         if not pathlib.Path(remkit_executable_path).exists():
             raise FileNotFoundError("Could not find ReMKiT executable")
@@ -296,13 +294,11 @@ class RemkitRun(WrappedRun):
         Raises
         ------
         FileNotFoundError
-            Raised if results directory could not be found
-        FileNotFoundError
-            Raised if config file path is provided, and no file could be found
-        FileNotFoundError
-            Raised if no config file was provided, and no GridOutput file is present in the results directory to determine a grid from
+            If results directory could not be found
+            If config file path is provided, and no file could be found
+            If no config file was provided, and no GridOutput file is present in the results directory to determine a grid from
         ValueError
-            Raised if variables requested by user are not available in the results files
+            If variables requested by user are not available in the results files
 
         """
         
