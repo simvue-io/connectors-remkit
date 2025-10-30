@@ -14,6 +14,8 @@ import typing
 import shutil
 import h5py
 import xarray
+from loguru import logger
+
 from RMK_support.grid import gridFromDict, Grid
 from RMK_support.IO_support import loadFromHDF5
 class RemkitRun(WrappedRun):
@@ -316,9 +318,11 @@ class RemkitRun(WrappedRun):
         
         # If config file is provided, get the grid from that
         if config_path:
-            self.save_file(config_path, category="input")
             with open(config_path, "r") as config_file:
                 config_dict = json.load(config_file)
+            if pathlib.Path(config_dict["HDF5"]["filepath"]).absolute() != results_dir_path.absolute():
+                logger.warning("Results path in config file does not match provided results_dir_path!")
+            self.save_file(config_path, category="input")
                 
             self.grid = gridFromDict(config_dict)
             self.update_metadata({"ReMKiT1D": config_dict})
