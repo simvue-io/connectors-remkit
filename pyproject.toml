@@ -1,6 +1,6 @@
 [project]
 name = "simvue-remkit"
-version = "1.0.0a1"
+version = "1.0.0"
 description = "Connector for viewing results from ReMKiT-1D simulations in Simvue."
 authors = [
     {name = "Matt Field",email = "matthew.field@ukaea.uk"}

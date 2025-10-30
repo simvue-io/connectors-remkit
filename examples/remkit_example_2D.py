@@ -3,7 +3,8 @@ ReMKiT-1D Connector Example
 ========================
 This is an example of the RemkitRun Connector class, displaying 2D metrics which vary across x through time.
 
-The ReMKiT-1D simulation here simulates.....
+The ReMKiT-1D simulation here simulates a single set of fluid plasma equations governs an advective wave of plasma with a Gaussian profile inside a reflective box. 
+See Mijin et al Comp. Phys. Comms (2024) 300 109195 Sec.5.1.1.
 
 To run this example with Docker:
     - Pull the base FDS image: docker run -it ghcr.io/simvue-io/remkit_example

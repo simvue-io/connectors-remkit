@@ -18,7 +18,7 @@ jobs:
   IntegrationTests:
     runs-on: ubuntu-latest
     container:
-      image: {your_base_image_here}
+      image: smijin/remkit1d-ci:latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python

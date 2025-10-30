@@ -37,11 +37,8 @@ WORKDIR /home/ReMKiT1D/build
 
 RUN make test > /home/ReMKiT1D_build_test.out
 
-# While it is private, comment out this clone
-RUN git clone https://github.com/simvue-io/connectors-remkit
 WORKDIR /home/connectors-remkit
-# And uncomment this copy
-# COPY . .
+COPY . .
 RUN uv venv --python 3.11
 RUN uv pip install .
 
