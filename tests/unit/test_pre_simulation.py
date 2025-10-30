@@ -125,7 +125,7 @@ def test_pre_simulation_results_path(folder_setup, setup_config_file, set_result
         
         with open(config_path, "r") as config_file:
             new_config = json.load(config_file)
-            assert new_config["HDF5"]["filepath"] == str(run.out_path)+"/"
+            assert pathlib.Path(new_config["HDF5"]["filepath"]).absolute() == run.out_path.absolute()
             
         assert run.process_command == f"ReMKiT_Process mpirun -n 4 remkit -with_config_path={config_path}"       
         

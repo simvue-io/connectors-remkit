@@ -18,18 +18,13 @@ jobs:
   IntegrationTests:
     runs-on: ubuntu-latest
     container:
-      image: smijin/remkit1d-ci:latest
+      image: ghcr.io/simvue-io/remkit_example:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install poetry
-        run: python3 -m pip install poetry
       - name: Install dependencies and run tests
         run: |
           export SIMVUE_URL=${{ secrets.SIMVUE_URL }}
           export SIMVUE_TOKEN=${{ secrets.SIMVUE_TOKEN }}
-          poetry install --all-extras
-          poetry run pytest tests/integration
+          uv pip install .
+          uv pip install pytest
+          uv run pytest tests/integration
