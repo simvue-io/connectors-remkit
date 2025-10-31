@@ -11,7 +11,7 @@ dependencies = [
     "simvue (>=2.2.2)",
     "simvue-connector",
     "h5py (>=3.14.0,<4.0.0)",
-    "rmk-support @ git+https://github.com/ukaea/ReMKiT1D-Python.git",
+    "rmk-support (>=2.0.0,<3.0.0)",
     ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
